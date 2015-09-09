@@ -10,10 +10,17 @@ import pygame
 from pygame.gfxdraw import trigon, line
 from pygame.locals import *
 from pygame import Color
+import time
+from graph import Graph
+from math import sqrt
 
 head_hole = [[325, 437],[320, 423], [329, 413], [332, 423]]
 chest_hole = [[320.72342,480],[338.90617,465.96863],[347.99754,480.61584],
               [329.8148,510.41534], [339.91632,480.11077],[334.86556,478.09046]]
+
+
+def dist(a, b):
+    return int(sqrt((a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y - b.y)))
 
 def load_points(file_name):
     infile = open(file_name, "r")
@@ -37,7 +44,8 @@ def main(file_name, translate, zoom):
     
     black = Color(0,0,0)
     red = Color(255, 0, 0)
-    green = Color(0, 255, 0)
+    green = Color(255, 255, 255)
+    yellow = Color(255, 255, 0)
     
     screen.fill(black)
     
@@ -81,6 +89,17 @@ def main(file_name, translate, zoom):
         x = 361*zoom + translate[0]
         y = 381*zoom + translate[1]
         cdt.add_point(Point(x, y))
+
+    xarr = [323, 372, 334, 424, 342, 352, 100, 567]
+    yarr = [395, 410, 645, 546, 620, 534, 370, 387]
+
+    if file_name == "data/test.dat":
+        for i in range(len(xarr)):
+            x = xarr[i]*zoom + translate[0]
+            y = yarr[i]*zoom + translate[1]
+            xarr[i] = x
+            yarr[i] = y
+            cdt.add_point(Point(x, y))
          
     ##
     ## Step 3: Triangulate
@@ -91,17 +110,51 @@ def main(file_name, translate, zoom):
         
     # The Main Event Loop
     done = False
+    vertexArr = []
+    g = Graph(len(points) + len(xarr))
+    for t in triangles:
+        x1 = int(t.a.x)
+        y1 = int(t.a.y)
+        x2 = int(t.b.x)
+        y2 = int(t.b.y)
+        x3 = int(t.c.x)
+        y3 = int(t.c.y)
+        i1 = -1;
+        i2 = -1;
+        i3 = -1;
+        for i in range(len(vertexArr)):
+            if(vertexArr[i].x == x1 and vertexArr[i].y == y1):
+                i1 = i
+            elif(vertexArr[i].x == x2 and vertexArr[i].y == y2):
+                i2 = i
+            elif(vertexArr[i].x == x3 and vertexArr[i].y == y3):
+                i3 = i
+        if(i1 == -1):
+            vertexArr.append(Point(x1, y1))
+            i1 = len(vertexArr) - 1
+        if(i2 == -1):
+            vertexArr.append(Point(x2, y2))
+            i2 = len(vertexArr) - 1
+        if(i3 == -1):
+            vertexArr.append(Point(x3, y3))
+            i3 = len(vertexArr) - 1
+        
+        trigon(screen, x1, y1, x2, y2, x3, y3, red)
+        g.addEdge(i1, i2, int(dist(Point(x1, y1), Point(x2, y2))))
+        g.addEdge(i3, i2, int(dist(Point(x2, y2), Point(x3, y3))))
+        g.addEdge(i1, i3, int(dist(Point(x3, y3), Point(x1, y1))))
+    g.FloydWarshall()
+
+    guard = []
+    print "look " + str(len(xarr)) + str(len(vertexArr))
+    for i in range(g.sz):
+        for j in range(len(xarr)):
+            if(xarr[j] == int(vertexArr[i].x) and yarr[j] == int(vertexArr[i].y)):
+                guard.append(i)
+
+    g.guard = guard
+    rcdtgrid = g.GraphReduction()
     while not done:
-    
-        # Draw triangles
-        for t in triangles:
-          x1 = int(t.a.x)
-          y1 = int(t.a.y)
-          x2 = int(t.b.x)
-          y2 = int(t.b.y)
-          x3 = int(t.c.x)
-          y3 = int(t.c.y)
-          trigon(screen, x1, y1, x2, y2, x3, y3, red)
         
         # Draw outline
         for i in range(len(points)):
@@ -128,6 +181,12 @@ def main(file_name, translate, zoom):
               x2 = int(chest_hole[j][0])
               y2 = int(chest_hole[j][1])
               line(screen, x1, y1, x2, y2, green)
+
+        for i in range(len(vertexArr)):
+        	for j in range(len(vertexArr)):
+        		if(rcdtgrid[i][j] == 1000000007):
+        			continue
+        		line(screen, int(vertexArr[i].x), int(vertexArr[i].y), int(vertexArr[j].x), int(vertexArr[j].y), yellow)
               
         # Update the screen
         pygame.display.update()
@@ -144,7 +203,7 @@ def main(file_name, translate, zoom):
                     break
                 if( e.key == K_f ):
                     pygame.display.toggle_fullscreen()
-        
+                  
     return
 
 if __name__=="__main__":
