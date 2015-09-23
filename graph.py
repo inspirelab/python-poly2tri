@@ -1,5 +1,7 @@
 import numpy
 import heapq
+import metis
+import networkx as nx
 
 class Graph:
 	sz = 0
@@ -64,7 +66,7 @@ class Graph:
 		minj = -1
 		redG = Graph(self.sz)
 		vertexList = []
-		prq = []
+		prq = [] 
 
 		guardFlag = numpy.zeros(self.sz, dtype=numpy.bool)
 		guardFlag.fill(False)
@@ -94,6 +96,33 @@ class Graph:
 			el = heapq.heappop(prq)
 			if (guardFlag[el[2]]):
 				guardCount = self.AddPathToGraph(el[1], el[2], redG, vertexList, guardFlag, guardCount)
+
+		mapping = []
+
+		for i in range(self.sz):
+			for j in range(self.sz):
+				if (redG.grid[i][j] != self.INF):
+					mapping.append(i)
+					break
+
+
+		adjList = []
+		for i in range(len(mapping)):
+			arrayi = []
+			for j in range(self.sz):
+				if (redG.grid[i][j] != self.INF):
+					el = mapping.index(j) + 1
+					arrayi.append((el, redG.grid[i][j]))
+			adjList.append(tuple(arrayi))
+		print adjList
+		# G = metis.adjlist_to_metis(adjList)
+		G = adjList
+		(edgecuts, parts) = metis.part_graph(G, 3)
+		colors = ['red','blue','green']
+		print parts
+		# for i, p in enumerate(parts):
+		# 	G.node[i]['color'] = colors[p]
+		# nx.write_dot(G, 'example.dot')
 		print redG.grid
 		return redG.grid
 

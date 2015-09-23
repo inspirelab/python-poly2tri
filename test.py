@@ -18,6 +18,16 @@ head_hole = [[325, 437],[320, 423], [329, 413], [332, 423]]
 chest_hole = [[320.72342,480],[338.90617,465.96863],[347.99754,480.61584],
               [329.8148,510.41534], [339.91632,480.11077],[334.86556,478.09046]]
 
+obstacle1 = [[211, 222],[218,226],[217,230],[210,229]]
+obstacle2 = [[245,195],[253,197],[250,204],[243,204]]
+obstacle3 = [[248,244],[277,250],[273,256],[248,252]]
+obstacle4 = [[273,196],[266,224],[279,227],[285,206]]
+obstacle = []
+obstacle.append(obstacle1)
+obstacle.append(obstacle2)
+obstacle.append(obstacle3)
+obstacle.append(obstacle4)
+
 
 def dist(a, b):
     return int(sqrt((a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y - b.y)))
@@ -90,8 +100,11 @@ def main(file_name, translate, zoom):
         y = 381*zoom + translate[1]
         cdt.add_point(Point(x, y))
 
-    xarr = [323, 372, 334, 424, 342, 352, 100, 567]
-    yarr = [395, 410, 645, 546, 620, 534, 370, 387]
+    # xarr = [323, 372, 334, 424, 342, 352, 100, 567]
+    # yarr = [395, 410, 645, 546, 620, 534, 370, 387]
+
+    xarr = [229, 236, 214, 285, 256, 265]
+    yarr = [193, 224, 246, 190, 260, 214]
 
     if file_name == "data/test.dat":
         for i in range(len(xarr)):
@@ -100,6 +113,26 @@ def main(file_name, translate, zoom):
             xarr[i] = x
             yarr[i] = y
             cdt.add_point(Point(x, y))
+
+    if file_name == "data/map.dat":
+        for i in range(len(xarr)):
+            x = xarr[i]*zoom + translate[0]
+            y = yarr[i]*zoom + translate[1]
+            xarr[i] = x
+            yarr[i] = y
+            cdt.add_point(Point(x, y))
+
+    hole_arr = []
+
+    if file_name == "data/map.dat": 
+        for obs_hole in obstacle:
+        	hole = []
+        	for p in obs_hole:
+	            p[0] = p[0]*zoom + translate[0]
+	            p[1] = p[1]*zoom + translate[1]
+	            hole.append(Point(p[0],p[1]))
+	        cdt.add_hole(hole)
+	        hole_arr.extend(hole)
          
     ##
     ## Step 3: Triangulate
@@ -111,7 +144,7 @@ def main(file_name, translate, zoom):
     # The Main Event Loop
     done = False
     vertexArr = []
-    g = Graph(len(points) + len(xarr))
+    g = Graph(len(points) + len(hole_arr) + len(xarr))
     for t in triangles:
         x1 = int(t.a.x)
         y1 = int(t.a.y)
@@ -181,6 +214,16 @@ def main(file_name, translate, zoom):
               x2 = int(chest_hole[j][0])
               y2 = int(chest_hole[j][1])
               line(screen, x1, y1, x2, y2, green)
+
+        if file_name == "data/map.dat":
+        	for obs in obstacle:
+	            for i in range(len(obs)):
+	              j = i+1 if i < len(obs) - 1 else 0
+	              x1 = int(obs[i][0])
+	              y1 = int(obs[i][1])
+	              x2 = int(obs[j][0])
+	              y2 = int(obs[j][1])
+	              line(screen, x1, y1, x2, y2, green)
 
         for i in range(len(vertexArr)):
         	for j in range(len(vertexArr)):
