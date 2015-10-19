@@ -2,6 +2,8 @@ import numpy
 import heapq
 import metis
 import networkx as nx
+import random
+import copy
 
 class Graph:
 	sz = 0
@@ -39,8 +41,8 @@ class Graph:
 					if(self.cost_matrix[i][j] > self.cost_matrix[i][k] + self.cost_matrix[k][j]):
 						self.cost_matrix[i][j] = self.cost_matrix[i][k] + self.cost_matrix[k][j]
 						self.path_matrix[i][j] = self.path_matrix[k][j]
-		print self.cost_matrix
-		print self.path_matrix
+		# print self.cost_matrix
+		# print self.path_matrix
 		return (self.cost_matrix, self.path_matrix)
 
 	def AddPathToGraph( self, start, end, gr, vertexList, guardFlag, guardCount):
@@ -57,8 +59,8 @@ class Graph:
 			cur2 = cur1
 			cur1 = self.path_matrix[start][cur2]
 			
-			if (cur1 != start):
-				break;
+			if (cur2 == start):
+				break
 		return guardCount
 	def GraphReduction(self):
 		smallest = self.INF
@@ -71,9 +73,12 @@ class Graph:
 		guardFlag = numpy.zeros(self.sz, dtype=numpy.bool)
 		guardFlag.fill(False)
 
+		print self.guard
 		for j in range(len(self.guard)):
 			guardFlag[self.guard[j]] = True
-			
+
+		realGuardFlag = copy.copy(guardFlag)
+
 		guardCount = len(self.guard)
 		print "look" + str(guardCount)
 		for i in range(len(self.guard)):
@@ -98,33 +103,101 @@ class Graph:
 				guardCount = self.AddPathToGraph(el[1], el[2], redG, vertexList, guardFlag, guardCount)
 
 		mapping = []
-
+		is_boundary = []
 		for i in range(self.sz):
 			for j in range(self.sz):
 				if (redG.grid[i][j] != self.INF):
+					if realGuardFlag[i] == False:
+						is_boundary.append(True)
+					else:
+						is_boundary.append(False)
 					mapping.append(i)
 					break
 
+		redGrid = numpy.zeros((len(mapping),len(mapping)), dtype=numpy.int)
 
-		adjList = []
 		for i in range(len(mapping)):
-			arrayi = []
-			for j in range(self.sz):
-				if (redG.grid[i][j] != self.INF):
-					el = mapping.index(j) + 1
-					arrayi.append((el, redG.grid[i][j]))
-			adjList.append(tuple(arrayi))
-		print adjList
-		# G = metis.adjlist_to_metis(adjList)
-		G = adjList
-		(edgecuts, parts) = metis.part_graph(G, 3)
-		colors = ['red','blue','green']
-		print parts
-		# for i, p in enumerate(parts):
-		# 	G.node[i]['color'] = colors[p]
-		# nx.write_dot(G, 'example.dot')
-		print redG.grid
-		return redG.grid
+			for j in range(len(mapping)):
+				redGrid[i][j] = redG.grid[mapping[i]][mapping[j]]
 
+		gvtxlist = []
+		# for i in range(100):
+			# gvtxlist.append(random.randint(0, 10))
+		gvtxlist = self.getPartitions(redGrid, is_boundary, 3)
+		print gvtxlist
 
+		return (redG.grid, gvtxlist, mapping)
 
+	def getPartitions(self, redG, is_boundary, num):
+		pqlist = []
+		boundarypushed = []
+		gvtxlist = []
+		visited = []
+
+		for j in range(len(redG)):
+			if is_boundary[j]:
+				visited.append(True)
+			else:
+				visited.append(False)
+
+		for i in range(num):
+			pqlist.append([])
+			boundarypushed.append(copy.copy(is_boundary))
+			gvtxlist.append([])
+		# startpt = range(len(redG))
+		startpt = []
+		print redG
+
+		for i in range(len(is_boundary)):
+			if len(startpt) == num:
+				break
+			if is_boundary[i]:
+				continue
+			startpt.append(i)
+		print is_boundary
+
+		# random.shuffle(startpt)
+		for i in range(num):
+			heapq.heappush(pqlist[i], (0, startpt[i],-1))
+		print startpt
+		while False in visited:
+			cost = 0
+			top  = 0
+			# print visited
+			for i in range(num):
+				flag = False
+				while True:
+					if len(pqlist[i]) == 0:
+						break
+					print "partition", i
+					cost, top, Boundary = heapq.heappop(pqlist[i])
+					if visited[top] == False:
+						flag = True
+						if Boundary != -1:
+							gvtxlist[i].append(Boundary)
+						break
+					else:
+						if boundarypushed[i][top]:
+							boundarypushed[i][top] = False
+							for j in range(len(redG)):
+								if redG[top][j] == self.INF or (visited[j] and not boundarypushed[i][j]):
+									continue
+								heapq.heappush(pqlist[i], (redG[top][j], j, top))
+				if flag == True:
+					if is_boundary[top] == False:
+						gvtxlist[i].append(top)
+					visited[top] = True
+					for j in range(len(redG)):
+						if redG[top][j] == self.INF or (visited[j] and not boundarypushed[i][j]):
+							continue
+						heapq.heappush(pqlist[i], (redG[top][j], j,-1))
+						print redG[top][j], j, top
+
+		parts = []
+		for i in range(len(redG)):
+			parts.append(-1)
+		for i in range(num):
+			for j in range(len(gvtxlist[i])):
+				parts[gvtxlist[i][j]] = i
+
+		return parts

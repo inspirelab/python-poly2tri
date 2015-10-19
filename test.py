@@ -7,12 +7,13 @@ from p2t import *
 
 # PyGame Constants
 import pygame
-from pygame.gfxdraw import trigon, line
+from pygame.gfxdraw import trigon, line, circle
 from pygame.locals import *
 from pygame import Color
 import time
 from graph import Graph
 from math import sqrt
+import random
 
 head_hole = [[325, 437],[320, 423], [329, 413], [332, 423]]
 chest_hole = [[320.72342,480],[338.90617,465.96863],[347.99754,480.61584],
@@ -53,7 +54,7 @@ def main(file_name, translate, zoom):
     pygame.mouse.set_visible(True)
     
     black = Color(0,0,0)
-    red = Color(255, 0, 0)
+    red = Color(0, 0, 0)
     green = Color(255, 255, 255)
     yellow = Color(255, 255, 0)
     
@@ -186,7 +187,14 @@ def main(file_name, translate, zoom):
                 guard.append(i)
 
     g.guard = guard
-    rcdtgrid = g.GraphReduction()
+    (rcdtgrid, parts, mapping) = g.GraphReduction()
+    colors = []
+    for i in range(len(parts)):
+    	r = random.randint(0, 255)
+    	g = random.randint(0, 255)
+    	b = random.randint(0, 255)
+    	colors.append(Color(r, g, b))
+    flag = 0
     while not done:
         
         # Draw outline
@@ -227,10 +235,27 @@ def main(file_name, translate, zoom):
 
         for i in range(len(vertexArr)):
         	for j in range(len(vertexArr)):
-        		if(rcdtgrid[i][j] == 1000000007):
+				    
+    
+        		if(i not in mapping):
         			continue
-        		line(screen, int(vertexArr[i].x), int(vertexArr[i].y), int(vertexArr[j].x), int(vertexArr[j].y), yellow)
-              
+        		if(j not in mapping):
+        			continue
+
+        		if parts[mapping.index(i)] == 1:
+        			pygame.draw.circle(screen, (255, 0, 0), (int(vertexArr[i].x), int(vertexArr[i].y)), 3, 0) 
+    			elif parts[mapping.index(i)] == 0:
+    				pygame.draw.circle(screen, (0, 255, 0), (int(vertexArr[i].x), int(vertexArr[i].y)), 3, 0) 
+    			else:
+    				pygame.draw.circle(screen, (0, 0, 255), (int(vertexArr[i].x), int(vertexArr[i].y)), 3, 0) 
+
+        		if(rcdtgrid[i][j] == 1000000007):# or parts[mapping.index(i)] != parts[mapping.index(j)]):
+        			continue
+        		if not flag:
+	        		print mapping.index(i)
+
+	    		line(screen, int(vertexArr[i].x), int(vertexArr[i].y), int(vertexArr[j].x), int(vertexArr[j].y), colors[parts[mapping.index(i)]])
+    	flag = 1
         # Update the screen
         pygame.display.update()
             
